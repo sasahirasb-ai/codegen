@@ -6,8 +6,8 @@ from src.code_generator import CodeGenerator
 class TestCodeGenerator:
     def test_init(self):
         # Arrange
-        openapi_file_path = "tests/sample.yaml"
-        output_dir = "tests/sample_dir/"
+        openapi_file_path = "tests/data/sample.yaml"
+        output_dir = "tests/data/sample_dir/"
 
         # Act
         code_generator = CodeGenerator(
@@ -26,8 +26,8 @@ class TestCodeGenerator:
 
     def test_execute(self):
         # Arrange
-        openapi_file_path = "D:/Desktop/codegen/codegen/tests/sample.yaml"
-        output_dir = "tests/sample_dir/"
+        openapi_file_path = "D:/Desktop/codegen/codegen/tests/data/sample.yaml"
+        output_dir = "tests/data/sample_dir/"
 
         # Act
         CodeGenerator(
@@ -46,5 +46,5 @@ class TestCodeGenerator:
         assert "user.py" in files
         assert "user_create.py" in files
         assert "user_update.py" in files
-        assert not os.path.exists("tests/sample_dir/temporary_model.py")
-        assert not os.path.exists("tests/sample_dir/temporary_api.yaml")
+        assert not os.path.exists("tests/data/sample_dir/temporary_model.py")
+        assert not os.path.exists("tests/data/sample_dir/temporary_api.yaml")
