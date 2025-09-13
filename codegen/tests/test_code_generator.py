@@ -1,7 +1,9 @@
 import os
+
 from src.code_generator import CodeGenerator
 
-class TestCodeGenerator():
+
+class TestCodeGenerator:
     def test_init(self):
         # Arrange
         openapi_file_name = "tests/sample.yaml"
@@ -13,7 +15,6 @@ class TestCodeGenerator():
         # Assert
         assert len(code_generator._imports) == 3
         assert len(code_generator._classes) == 3
-
 
     def test_execute(self):
         # Arrange
