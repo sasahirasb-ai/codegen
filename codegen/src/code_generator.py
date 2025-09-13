@@ -6,6 +6,11 @@ from copy import copy
 from pathlib import Path
 from typing import List
 
+import yaml
+
+TEMPORARY_MODEL_FILE_NAME = "temporary_model.py"
+TEMPORARY_API_FILE_NAME = "temporary_api.yaml"
+
 
 class CodeGenerator:
     output_dir: str
@@ -13,22 +18,34 @@ class CodeGenerator:
     _imports: list[ast.Import | ast.ImportFrom]
     _classes: list[ast.ClassDef]
 
-    def __init__(self, openapi_file_name: str, output_dir: str):
+    def __init__(self, openapi_file_path: str, output_dir: str, parameters: list[str]):
+        """
+        notes:
+            * parametersは、datemodel-code-generatorに準拠
+            https://github.com/koxudaxi/datamodel-code-generator/
+        """
+        os.makedirs(output_dir, exist_ok=True)
         self.output_dir = output_dir
-        temporary_filename: str = "temporary_model.py"
-        temporary_filepath = os.path.join(output_dir, temporary_filename)
-        self._generate_temporary_file(temporary_filepath, openapi_file_name)
-        source_code = self._import_temporary_file(temporary_filepath)
+        temporary_model_filepath = os.path.join(output_dir, TEMPORARY_MODEL_FILE_NAME)
+        temporary_api_filepath = os.path.join(output_dir, TEMPORARY_API_FILE_NAME)
+        self._generate_merged_openapi_file(openapi_file_path)
+        self._generate_temporary_model_file(temporary_model_filepath, parameters)
+        source_code = self._import_temporary_file(temporary_model_filepath)
         self._imports = self._extract_imports(source_code)
         self._classes = self._extract_classes(source_code)
         self._source_code = source_code
-        os.remove(temporary_filepath)
+        os.remove(temporary_model_filepath)
+        os.remove(temporary_api_filepath)
 
     def filter_import_node(
         self, import_node: ast.Import | ast.ImportFrom, used_imports: set[str]
-    ):
+    ) -> ast.Import | ast.ImportFrom | None:
+        """
+        used_importsに含まれるimportのみを返す
+        """
         new_node = copy(import_node)
         new_node.names = []
+
         if names := [
             name
             for name in import_node.names
@@ -39,51 +56,120 @@ class CodeGenerator:
         return new_node if new_node.names else None
 
     def execute(self):
-        os.makedirs(self.output_dir, exist_ok=True)
-
         for class_node in self._classes:
-            used_imports = self._get_imports_for_class(class_node)
-            import_nodes = [
-                self.filter_import_node(import_node, used_imports)
-                for import_node in self._imports
-            ]
-            class_source_code = ast.get_source_segment(self._source_code, class_node)
-            output_path = os.path.join(
-                self.output_dir, f"{self._convert_to_snake_case(class_node.name)}.py"
+            class_source_code: str | None = ast.get_source_segment(
+                self._source_code, class_node
             )
 
             if not class_source_code:
                 continue
 
-            with open(output_path, "w", encoding="utf-8") as f:
-                f.write("\n".join([ast.unparse(node) for node in import_nodes if node]))
-                f.write("\n\n\n")
-                f.write(class_source_code)
-                f.write("\n")
+            used_imports: set[str] = self._get_imports_for_class(class_node)
+            import_nodes: list[ast.Import | ast.ImportFrom | None] = [
+                self.filter_import_node(import_node, used_imports)
+                for import_node in self._imports
+            ]
 
-    def _get_imports_for_class(self, class_node: ast.ClassDef):
+            content = "\n\n\n".join(
+                [
+                    "\n".join([ast.unparse(node) for node in import_nodes if node]),
+                    class_source_code,
+                ]
+            )
+
+            with open(
+                Path(
+                    self.output_dir,
+                    f"{self._convert_to_snake_case(class_node.name)}.py",
+                ),
+                "w",
+                encoding="utf-8",
+            ) as f:
+                f.write(content + "\n")
+
+    def _get_imports_for_class(self, class_node: ast.ClassDef) -> set[str]:
         used_names = set()
         for node in ast.walk(class_node):
             if isinstance(node, ast.Name):
                 used_names.add(node.id)
         return used_names
 
-    def _generate_temporary_file(self, temporary_filename: str, openapi_file_name: str):
-        openapi_file_path = Path(openapi_file_name).resolve(strict=True)
-        temporary_file_path = Path(temporary_filename).resolve()
+    @staticmethod
+    def _find_refs(obj):
+        """再帰的に $ref の値を取得する"""
+        refs = set()
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                if k == "$ref":
+                    refs.add(v)
+                else:
+                    refs.update(CodeGenerator._find_refs(v))
+        elif isinstance(obj, list):
+            for item in obj:
+                refs.update(CodeGenerator._find_refs(item))
+        return refs
+
+    def _generate_merged_openapi_file(self, openapi_filepath: str):
+        """
+        $refを用いて、別ファイルを参照しているopenapiファイルを、1つのファイルに統合する
+        """
+        with open(openapi_filepath, "r", encoding="utf-8") as f:
+            openapi_spec = yaml.safe_load(f)
+
+        # $refを抽出
+        refs = self._find_refs(openapi_spec)
+
+        # 抽出した$refが指すファイルからschemaを移動し、$refの値も合わせて変更
+        components_schemas = {}
+        for ref in refs:
+            ref_file = Path(os.path.dirname(openapi_filepath), ref)
+            schema_name = ref_file.stem
+            with open(ref_file) as rf:
+                ref_spec = yaml.safe_load(rf)
+            components_schemas.update({schema_name: ref_spec})
+
+        # api_spec の components.schemas を置き換え
+        openapi_spec["components"] = {"schemas": components_schemas}
+
+        # paths 内の $ref を更新
+        def update_refs(obj):
+            if isinstance(obj, dict):
+                for k, v in obj.items():
+                    if k == "$ref" and isinstance(v, str):
+                        ref_file = Path(v).stem
+                        obj[k] = f"#/components/schemas/{ref_file}"
+                    else:
+                        update_refs(v)
+            elif isinstance(obj, list):
+                for item in obj:
+                    update_refs(item)
+
+        update_refs(openapi_spec["paths"])
+
+        # 統合 YAML を書き出す
+        with open(os.path.join(self.output_dir, TEMPORARY_API_FILE_NAME), "w") as f:
+            yaml.safe_dump(openapi_spec, f, sort_keys=False)
+
+    def _generate_temporary_model_file(
+        self, temporary_model_filepath: str, parameters: list[str]
+    ):
+        """
+        datamodel-codegenを使用して、一時モデルファイルを生成
+        """
+        openapi_file_path = Path(self.output_dir, TEMPORARY_API_FILE_NAME).resolve(
+            strict=True
+        )
+        temporary_file_path = Path(temporary_model_filepath).resolve()
         subprocess.run(
             [
                 "datamodel-codegen",
                 "--input",
-                openapi_file_path,
+                str(openapi_file_path),
                 "--input-file-type",
                 "openapi",
                 "--output",
-                temporary_file_path,
-                "--use-union-operator",
-                "--use-default-kwarg",
-                "--use-field-description",
-                "--use-double-quotes",
+                str(temporary_file_path),
+                *parameters,
             ],
             check=True,
         )  # nosec B603, B607

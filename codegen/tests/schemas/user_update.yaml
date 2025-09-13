@@ -1,0 +1,11 @@
+type: object
+properties:
+  username:
+    type: string
+    example: johndoe_new
+  hashed_password:
+    type: string
+    example: 'new_hashed_password_here'
+  is_active:
+    type: boolean
+    example: false

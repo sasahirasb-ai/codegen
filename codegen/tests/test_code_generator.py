@@ -6,11 +6,19 @@ from src.code_generator import CodeGenerator
 class TestCodeGenerator:
     def test_init(self):
         # Arrange
-        openapi_file_name = "tests/sample.yaml"
+        openapi_file_path = "tests/sample.yaml"
         output_dir = "tests/sample_dir/"
 
         # Act
-        code_generator = CodeGenerator(openapi_file_name, output_dir)
+        code_generator = CodeGenerator(
+            openapi_file_path=openapi_file_path,
+            output_dir=output_dir,
+            parameters=[
+                "--use-union-operator",
+                "--use-default-kwarg",
+                "--use-double-quotes",
+            ],
+        )
 
         # Assert
         assert len(code_generator._imports) == 3
@@ -18,11 +26,19 @@ class TestCodeGenerator:
 
     def test_execute(self):
         # Arrange
-        openapi_file_name = "tests/sample.yaml"
+        openapi_file_path = "D:/Desktop/codegen/codegen/tests/sample.yaml"
         output_dir = "tests/sample_dir/"
 
         # Act
-        CodeGenerator(openapi_file_name, output_dir).execute()
+        CodeGenerator(
+            openapi_file_path=openapi_file_path,
+            output_dir=output_dir,
+            parameters=[
+                "--use-union-operator",
+                "--use-default-kwarg",
+                "--use-double-quotes",
+            ],
+        ).execute()
 
         # Assert
         with os.scandir(output_dir) as entries:
@@ -30,3 +46,5 @@ class TestCodeGenerator:
         assert "user.py" in files
         assert "user_create.py" in files
         assert "user_update.py" in files
+        assert not os.path.exists("tests/sample_dir/temporary_model.py")
+        assert not os.path.exists("tests/sample_dir/temporary_api.yaml")

@@ -14,7 +14,7 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/User'
+                  $ref: './schemas/user.yaml'
     post:
       summary: Create a new user
       requestBody:
@@ -22,14 +22,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserCreate'
+              $ref: './schemas/user_create.yaml'
       responses:
         '201':
           description: User created
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: './schemas/user.yaml'
   /users/{userId}:
     get:
       summary: Get a user by ID
@@ -45,7 +45,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: './schemas/user.yaml'
         '404':
           description: User not found
     put:
@@ -61,14 +61,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserUpdate'
+              $ref: './schemas/user_update.yaml'
       responses:
         '200':
           description: User updated
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/User'
+                $ref: './schemas/user.yaml'
         '404':
           description: User not found
     delete:
@@ -82,58 +82,4 @@ paths:
       responses:
         '204':
           description: User deleted
-components:
-  schemas:
-    User:
-      type: object
-      properties:
-        id:
-          type: integer
-          example: 1
-        username:
-          type: string
-          example: johndoe
-        email:
-          type: string
-          format: email
-          example: johndoe@example.com
-        is_active:
-          type: boolean
-          example: true
-        created_at:
-          type: string
-          format: date-time
-          example: '2024-01-01T12:00:00Z'
-        updated_at:
-          type: string
-          format: date-time
-          example: '2024-01-02T12:00:00Z'
-    UserCreate:
-      type: object
-      required:
-        - username
-        - email
-        - hashed_password
-      properties:
-        username:
-          type: string
-          example: johndoe
-        email:
-          type: string
-          format: email
-          example: johndoe@example.com
-        hashed_password:
-          type: string
-          example: 'hashed_password_here'
-    UserUpdate:
-      type: object
-      properties:
-        username:
-          type: string
-          example: johndoe_new
-        hashed_password:
-          type: string
-          example: 'new_hashed_password_here'
-        is_active:
-          type: boolean
-          example: false
+components: {}

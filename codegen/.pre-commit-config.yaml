@@ -14,6 +14,8 @@ repos:
       - id: mypy
         language_version: python3
         files: ^codegen/
+        additional_dependencies:
+          - types-PyYAML
 
   - repo: https://github.com/PyCQA/bandit
     rev: 1.7.5
@@ -21,3 +23,5 @@ repos:
       - id: bandit
         language_version: python3
         files: ^codegen/src/
+        additional_dependencies:
+          - pbr
