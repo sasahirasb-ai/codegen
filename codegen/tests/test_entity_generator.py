@@ -152,7 +152,7 @@ class TestEntityGenerator:
                 name="password",
                 data_type=DataType.STRING,
                 length=None,
-                nullable=False,
+                nullable=True,
                 primary_key=False,
                 unique=False,
                 default=None,
@@ -184,5 +184,5 @@ class TestEntityGenerator:
         # Assert
         with os.scandir("tests/data/entities") as entries:
             files = [entry.name for entry in entries if entry.is_file()]
-        assert "user.py" in files
-        assert "user_password.py" in files
+        assert "user_entity.py" in files
+        assert "user_password_entity.py" in files

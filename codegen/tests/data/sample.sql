@@ -8,7 +8,7 @@ CREATE TABLE user (
 CREATE TABLE user_password (
     id VARCHAR(40) PRIMARY KEY,
     user_id VARCHAR(40) NOT NULL,
-    password TEXT NOT NULL,
+    password TEXT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (user_id) REFERENCES user(id)
 );

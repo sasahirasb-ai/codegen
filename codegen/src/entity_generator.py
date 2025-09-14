@@ -218,11 +218,17 @@ class EntityGenerator:
             column_name = columndef.this.name
             column_type = columndef.kind.this.value
             column_type_lengths = [exp.this.this for exp in columndef.kind.expressions]
-            constraints = {c.kind.key: c.kind.this for c in columndef.constraints}
+            constraints = {
+                c.kind.key: (c.kind.this, c.kind.args.get("allow_null"))
+                for c in columndef.constraints
+            }
 
             is_primary_key = "primarykeycolumnconstraint" in constraints
             is_unique = "uniquecolumnconstraint" in constraints or is_primary_key
-            is_not_null = "notnullcolumnconstraint" in constraints or is_unique
+            is_not_null = (
+                not constraints.get("notnullcolumnconstraint", (None, True))[1]
+                or is_unique
+            )
 
             column = Column(
                 name=column_name,
@@ -232,7 +238,7 @@ class EntityGenerator:
                 primary_key=is_primary_key,
                 unique=is_unique,
                 default=(
-                    str(constraints["defaultcolumnconstraint"])
+                    str(constraints["defaultcolumnconstraint"][0])
                     if "defaultcolumnconstraint" in constraints
                     else None
                 ),
