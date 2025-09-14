@@ -26,7 +26,7 @@ class TestCodeGenerator:
 
     def test_execute(self):
         # Arrange
-        openapi_file_path = "D:/Desktop/codegen/codegen/tests/data/sample.yaml"
+        openapi_file_path = "tests/data/sample.yaml"
         output_dir = "tests/data/sample_dir/"
 
         # Act
