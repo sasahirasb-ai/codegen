@@ -28,7 +28,7 @@ class {{ table.name.capitalize() }}Entity(DeclarativeBase):
     {{ column.name }}: Mapped[{{ column.data_type.to_python_type().__qualname__ -}}
         {{ '| None' if column.nullable else '' }}] = mapped_column( \
         {{- column.data_type.to_sqlalchemy().__name__ }}
-        {%- if column.length %}, length={{ column.length -}}{% endif -%}
+        {%- if column.length %}({{ column.length -}}){% endif -%}
         , nullable={{ 'True' if column.nullable else 'False' -}}
         {%- if column.primary_key %}, primary_key=True{% endif -%}
         {%- if column.unique %}, unique=True{% endif -%}
