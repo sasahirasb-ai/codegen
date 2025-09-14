@@ -1,10 +1,12 @@
 from datetime import datetime
 
 from sqlalchemy import DateTime, String
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
+
+from tests.data.entities.base_entity import Base
 
 
-class User_passwordEntity(DeclarativeBase):
+class User_passwordEntity(Base):
     __tablename__ = "user_password"
 
     id: Mapped[str] = mapped_column(

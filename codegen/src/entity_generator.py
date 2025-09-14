@@ -10,6 +10,12 @@ from sqlalchemy import Boolean, Date, DateTime, Float, Integer, String, Time
 from sqlglot import Expression, parse
 from sqlglot.expressions import ColumnDef
 
+BASE_ENTITY = """
+from sqlalchemy.orm import declarative_base
+
+Base = declarative_base()
+"""
+
 ENTITY_TEMPLATE = """
 {%- set dt_imports = [] -%}
 {%- if has_datetime %}{% set _ = dt_imports.append("datetime") %}{% endif -%}
@@ -19,10 +25,12 @@ ENTITY_TEMPLATE = """
 from datetime import {{ dt_imports | join(", ") }}
 {%- endif %}
 from sqlalchemy import {{ sqlalchemy_imports | join(', ') }}
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
+
+from {{ output_dir -}}.base_entity import Base
 
 
-class {{ table.name.capitalize() }}Entity(DeclarativeBase):
+class {{ table.name.capitalize() }}Entity(Base):
     __tablename__ = "{{ table.name }}"
 {% for column in table.columns %}
     {{ column.name }}: Mapped[{{ column.data_type.to_python_type().__qualname__ -}}
@@ -271,6 +279,11 @@ class EntityGenerator:
         """
         Entityファイル生成
         """
+        # Base Entityファイル生成
+        with open(Path(self.output_dir, "base_entity.py"), "w", encoding="utf-8") as f:
+            f.write(BASE_ENTITY)
+
+        # Entityファイル生成
         template: Template = Template(source=ENTITY_TEMPLATE)
 
         for table in tables:
@@ -292,6 +305,7 @@ class EntityGenerator:
                 has_datetime=has_datetime,
                 has_date=has_date,
                 has_time=has_time,
+                output_dir=self.output_dir.replace("/", "."),
             )
 
             out_path = Path(self.output_dir, f"{table.name}_entity.py")
