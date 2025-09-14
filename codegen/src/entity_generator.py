@@ -10,20 +10,20 @@ from sqlalchemy import Boolean, Date, DateTime, Float, Integer, String, Time
 from sqlglot import Expression, parse
 from sqlglot.expressions import ColumnDef
 
-BASE_ENTITY = """
+BASE_ENTITY = """\
 from sqlalchemy.orm import declarative_base
 
 Base = declarative_base()
 """
 
-ENTITY_TEMPLATE = """
+ENTITY_TEMPLATE = """\
 {%- set dt_imports = [] -%}
 {%- if has_datetime %}{% set _ = dt_imports.append("datetime") %}{% endif -%}
 {%- if has_date %}{% set _ = dt_imports.append("date") %}{% endif -%}
 {%- if has_time %}{% set _ = dt_imports.append("time") %}{% endif -%}
-{%- if dt_imports %}
+{%- if dt_imports -%}
 from datetime import {{ dt_imports | join(", ") }}
-{%- endif %}
+{% endif %}
 from sqlalchemy import {{ sqlalchemy_imports | join(', ') }}
 from sqlalchemy.orm import Mapped, mapped_column
 
