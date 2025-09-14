@@ -11,9 +11,11 @@ from sqlglot import Expression, parse
 from sqlglot.expressions import ColumnDef
 
 BASE_ENTITY = """\
-from sqlalchemy.orm import declarative_base
+from sqlalchemy.orm import DeclarativeBase
 
-Base = declarative_base()
+
+class Base(DeclarativeBase):
+    pass
 """
 
 ENTITY_TEMPLATE = """\
