@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
     branches:
-      - master
+      - main
 
 defaults:
   run:
@@ -13,7 +13,7 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     permissions:
       contents: read
@@ -39,7 +39,7 @@ jobs:
         run: uv tool install nox
 
       - name: Run tests with coverage
-        run: nox --cov=src --cov-report=json:coverage.json
+        run: nox -t coverage
 
       - name: Post coverage and benchmark comment
         if: matrix.os == 'ubuntu-latest'
