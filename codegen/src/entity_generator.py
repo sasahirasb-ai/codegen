@@ -5,9 +5,40 @@ from datetime import date, datetime, time
 from enum import Enum
 from pathlib import Path
 
+from jinja2 import Template
 from sqlalchemy import Boolean, Date, DateTime, Float, Integer, String, Time
 from sqlglot import Expression, parse
 from sqlglot.expressions import ColumnDef
+
+ENTITY_TEMPLATE = """
+{%- if has_current_timestamp -%}
+from datetime import datetime
+{%- endif %}
+from sqlalchemy import {{ sqlalchemy_imports | join(', ') }}
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+
+
+class {{ table.name.capitalize() }}(DeclarativeBase):
+    __tablename__ = "{{ table.name }}"
+{% for column in table.columns %}
+    {{ column.name }}: Mapped[{{ column.data_type.to_python_type().__qualname__ -}}
+        {{ '| None' if column.nullable else '' }}] = mapped_column( \
+        {{- column.data_type.to_sqlalchemy().__name__ }}
+        {%- if column.length %}, length={{ column.length -}}{% endif -%}
+        , nullable={{ 'True' if column.nullable else 'False' -}}
+        {%- if column.primary_key %}, primary_key=True{% endif -%}
+        {%- if column.unique %}, unique=True{% endif -%}
+        {%- if column.default -%}
+            {%- if column.default == "CURRENT_TIMESTAMP()" -%}
+            , default=datetime.utcnow
+            {%- else -%}
+            , default={{ column.default -}}
+            {%- endif -%}
+        {%- endif -%}
+    )
+{%- endfor %}
+
+"""
 
 
 class DataType(Enum):
@@ -230,76 +261,22 @@ class EntityGenerator:
         """
         Entityファイル生成
         """
+        template: Template = Template(source=ENTITY_TEMPLATE)
+
         for table in tables:
-            has_current_timestamp = "CURRENT_TIMESTAMP()" in [
-                col.default for col in table.columns if col.default
-            ]
+            has_current_timestamp = any(
+                col.default == "CURRENT_TIMESTAMP()" for col in table.columns
+            )
 
-            used_imports = {col.data_type.to_sqlalchemy() for col in table.columns}
-            sqlalchemy_imports = [
-                used_import.__qualname__ for used_import in used_imports
-            ]
+            sqlalchemy_imports = sorted(
+                {col.data_type.to_sqlalchemy().__name__ for col in table.columns}
+            )
 
-            import_source_codes = [
-                row
-                for row in [
-                    "from datetime import datetime" if has_current_timestamp else None,
-                    f"from sqlalchemy import {', '.join(sqlalchemy_imports)}",
-                    "from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column",
-                ]
-                if row
-            ]
+            rendered = template.render(
+                table=table,
+                sqlalchemy_imports=sqlalchemy_imports,
+                has_current_timestamp=has_current_timestamp,
+            )
 
-            class_source_code = [
-                f"class {table.name.capitalize()}(DeclarativeBase):",
-                f'    __tablename__ = "{table.name}"',
-                "",
-                *[
-                    "".join(
-                        [
-                            f"    {column.name}",
-                            (
-                                f": Mapped[{column.data_type.to_python_type().__qualname__}"
-                                f"{'| None' if column.nullable else ''}]"
-                            ),
-                            " = ",
-                            f"mapped_column({
-                                ', '.join(
-                                    [
-                                        row
-                                        for row in [
-                                            f'{column.data_type.to_sqlalchemy().__name__}',
-                                            f'length={column.length}'
-                                            if column.length
-                                            else None,
-                                            'nullable=True'
-                                            if column.nullable
-                                            else 'nullable=False',
-                                            'primary_key=True'
-                                            if column.primary_key
-                                            else None,
-                                            'unique=True' if column.unique else None,
-                                            (
-                                                'default=datetime.utcnow'
-                                                if has_current_timestamp
-                                                else f'default={column.default}'
-                                            )
-                                            if column.default
-                                            else None,
-                                        ]
-                                        if row
-                                    ]
-                                )
-                            })",
-                            "",
-                        ]
-                    )
-                    for column in table.columns
-                ],
-            ]
-
-            with open(
-                Path(self.output_dir, f"{table.name}.py"), "w", encoding="utf-8"
-            ) as f:
-                f.write(f"{'\n'.join(import_source_codes)}\n\n\n")
-                f.write(f"{'\n'.join(class_source_code)}\n")
+            out_path = Path(self.output_dir, f"{table.name}.py")
+            out_path.write_text(rendered, encoding="utf-8")
