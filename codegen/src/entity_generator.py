@@ -11,8 +11,12 @@ from sqlglot import Expression, parse
 from sqlglot.expressions import ColumnDef
 
 ENTITY_TEMPLATE = """
-{%- if has_current_timestamp -%}
-from datetime import datetime
+{%- set dt_imports = [] -%}
+{%- if has_datetime %}{% set _ = dt_imports.append("datetime") %}{% endif -%}
+{%- if has_date %}{% set _ = dt_imports.append("date") %}{% endif -%}
+{%- if has_time %}{% set _ = dt_imports.append("time") %}{% endif -%}
+{%- if dt_imports %}
+from datetime import {{ dt_imports | join(", ") }}
 {%- endif %}
 from sqlalchemy import {{ sqlalchemy_imports | join(', ') }}
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
@@ -264,9 +268,13 @@ class EntityGenerator:
         template: Template = Template(source=ENTITY_TEMPLATE)
 
         for table in tables:
-            has_current_timestamp = any(
-                col.default == "CURRENT_TIMESTAMP()" for col in table.columns
+            has_datetime = any(
+                col.default == "CURRENT_TIMESTAMP()"
+                or col.data_type == DataType.DATETIME
+                for col in table.columns
             )
+            has_date = any(col.data_type == DataType.DATE for col in table.columns)
+            has_time = any(col.data_type == DataType.TIME for col in table.columns)
 
             sqlalchemy_imports = sorted(
                 {col.data_type.to_sqlalchemy().__name__ for col in table.columns}
@@ -275,7 +283,9 @@ class EntityGenerator:
             rendered = template.render(
                 table=table,
                 sqlalchemy_imports=sqlalchemy_imports,
-                has_current_timestamp=has_current_timestamp,
+                has_datetime=has_datetime,
+                has_date=has_date,
+                has_time=has_time,
             )
 
             out_path = Path(self.output_dir, f"{table.name}.py")
