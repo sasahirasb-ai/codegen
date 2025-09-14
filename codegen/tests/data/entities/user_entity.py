@@ -4,7 +4,7 @@ from sqlalchemy import DateTime, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
-class User(DeclarativeBase):
+class UserEntity(DeclarativeBase):
     __tablename__ = "user"
 
     id: Mapped[str] = mapped_column(

@@ -4,7 +4,7 @@ from sqlalchemy import DateTime, String
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
-class User_password(DeclarativeBase):
+class User_passwordEntity(DeclarativeBase):
     __tablename__ = "user_password"
 
     id: Mapped[str] = mapped_column(

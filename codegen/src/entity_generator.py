@@ -22,7 +22,7 @@ from sqlalchemy import {{ sqlalchemy_imports | join(', ') }}
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
 
-class {{ table.name.capitalize() }}(DeclarativeBase):
+class {{ table.name.capitalize() }}Entity(DeclarativeBase):
     __tablename__ = "{{ table.name }}"
 {% for column in table.columns %}
     {{ column.name }}: Mapped[{{ column.data_type.to_python_type().__qualname__ -}}
@@ -288,5 +288,5 @@ class EntityGenerator:
                 has_time=has_time,
             )
 
-            out_path = Path(self.output_dir, f"{table.name}.py")
+            out_path = Path(self.output_dir, f"{table.name}_entity.py")
             out_path.write_text(rendered, encoding="utf-8")
