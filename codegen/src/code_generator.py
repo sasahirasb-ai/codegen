@@ -56,6 +56,8 @@ class CodeGenerator:
         return new_node if new_node.names else None
 
     def execute(self):
+        class_names = {node.name for node in self._classes}
+
         for class_node in self._classes:
             class_source_code: str | None = ast.get_source_segment(
                 self._source_code, class_node
@@ -64,15 +66,47 @@ class CodeGenerator:
             if not class_source_code:
                 continue
 
+            # クラスの型ヒントから、importを取得
+            class_imports = set()
+            class_annotations = [
+                attr.annotation
+                for attr in class_node.body
+                if isinstance(attr, ast.AnnAssign)
+            ]
+            for annotation in class_annotations:
+                if isinstance(annotation, ast.Name) and annotation.id in class_names:
+                    class_imports.add(annotation.id)
+
+                if isinstance(annotation, ast.BinOp):
+                    left = annotation.left
+                    right = annotation.right
+
+                    if isinstance(left, ast.Name) and isinstance(right, ast.Constant):
+                        if left.id in class_names:
+                            class_imports.add(left.id)
+
+            # インポートのソースコード生成
             used_imports: set[str] = self._get_imports_for_class(class_node)
             import_nodes: list[ast.Import | ast.ImportFrom | None] = [
                 self.filter_import_node(import_node, used_imports)
                 for import_node in self._imports
             ]
+            import_source_codes = [ast.unparse(node) for node in import_nodes if node]
+
+            # モデル同士のインポート追加
+            if class_imports:
+                module = self.output_dir.replace("/", ".")
+                if module[-1] != ".":
+                    module = module + "."
+                class_import_source_codes = [
+                    f"from {module}{str(class_import).lower()} import {class_import}"
+                    for class_import in class_imports
+                ]
+                import_source_codes.extend(class_import_source_codes)
 
             content = "\n\n\n".join(
                 [
-                    "\n".join([ast.unparse(node) for node in import_nodes if node]),
+                    "\n".join(import_source_codes),
                     class_source_code,
                 ]
             )
@@ -113,6 +147,25 @@ class CodeGenerator:
         """
         $refを用いて、別ファイルを参照しているopenapiファイルを、1つのファイルに統合する
         """
+
+        # モデル内の$refを探索し、componentに置き換え
+        def convert_ref_to_stem(data):
+            if isinstance(data, dict):
+                new_dict = {}
+                for key, value in data.items():
+                    if key == "$ref" and isinstance(value, str):
+                        # stemに置き換え
+                        new_dict[key] = (
+                            f"#/components/schemas/{Path(value.split('#', 1)[0]).stem}"
+                        )
+                    else:
+                        new_dict[key] = convert_ref_to_stem(value)
+                return new_dict
+            elif isinstance(data, list):
+                return [convert_ref_to_stem(item) for item in data]
+            else:
+                return data
+
         with open(openapi_filepath, "r", encoding="utf-8") as f:
             openapi_spec = yaml.safe_load(f)
 
@@ -126,6 +179,7 @@ class CodeGenerator:
             schema_name = ref_file.stem
             with open(ref_file, "r", encoding="utf-8") as rf:
                 ref_spec = yaml.safe_load(rf)
+            ref_spec = convert_ref_to_stem(ref_spec)
             components_schemas.update({schema_name: ref_spec})
 
         # api_spec の components.schemas を置き換え
@@ -152,7 +206,7 @@ class CodeGenerator:
             "w",
             encoding="utf-8",
         ) as f:
-            yaml.safe_dump(openapi_spec, f, sort_keys=False)
+            yaml.safe_dump(openapi_spec, f, sort_keys=False, encoding="utf-8")
 
     def _generate_temporary_model_file(
         self, temporary_model_filepath: str, parameters: list[str]

@@ -9,3 +9,5 @@ properties:
   is_active:
     type: boolean
     example: false
+  created_by:
+    $ref: ./user.yaml

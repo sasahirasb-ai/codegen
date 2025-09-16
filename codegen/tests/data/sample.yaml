@@ -5,7 +5,7 @@ info:
 paths:
   /users:
     get:
-      summary: Get list of users
+      summary: ユーザー一覧取得
       responses:
         '200':
           description: A list of users
