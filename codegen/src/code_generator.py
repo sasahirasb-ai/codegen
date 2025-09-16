@@ -124,7 +124,7 @@ class CodeGenerator:
         for ref in refs:
             ref_file = Path(os.path.dirname(openapi_filepath), ref)
             schema_name = ref_file.stem
-            with open(ref_file) as rf:
+            with open(ref_file, "r", encoding="utf-8") as rf:
                 ref_spec = yaml.safe_load(rf)
             components_schemas.update({schema_name: ref_spec})
 
@@ -147,7 +147,11 @@ class CodeGenerator:
         update_refs(openapi_spec["paths"])
 
         # 統合 YAML を書き出す
-        with open(os.path.join(self.output_dir, TEMPORARY_API_FILE_NAME), "w") as f:
+        with open(
+            os.path.join(self.output_dir, TEMPORARY_API_FILE_NAME),
+            "w",
+            encoding="utf-8",
+        ) as f:
             yaml.safe_dump(openapi_spec, f, sort_keys=False)
 
     def _generate_temporary_model_file(
