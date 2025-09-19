@@ -14,7 +14,7 @@ BASE_ENTITY = """\
 from sqlalchemy.orm import DeclarativeBase
 
 
-class Base(DeclarativeBase):
+class BaseEntity(DeclarativeBase):
     pass
 """
 
@@ -29,10 +29,10 @@ from datetime import {{ dt_imports | join(", ") }}
 from sqlalchemy import {{ sqlalchemy_imports | join(', ') }}
 from sqlalchemy.orm import Mapped, mapped_column
 
-from {{ output_dir -}}.base_entity import Base
+from {{ output_dir -}}.base_entity import BaseEntity
 
 
-class {{ table.name.split('_') | map('capitalize') | join('') }}Entity(Base):
+class {{ table.name.split('_') | map('capitalize') | join('') }}Entity(BaseEntity):
     __tablename__ = "{{ table.name }}"
 {% for column in table.columns %}
     {{ column.name }}: Mapped[{{ column.data_type.to_python_type().__qualname__ -}}
