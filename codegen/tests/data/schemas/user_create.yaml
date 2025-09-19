@@ -1,0 +1,16 @@
+type: object
+required:
+  - username
+  - email
+  - hashed_password
+properties:
+  username:
+    type: string
+    example: johndoe
+  email:
+    type: string
+    format: email
+    example: johndoe@example.com
+  hashed_password:
+    type: string
+    example: 'hashed_password_here'

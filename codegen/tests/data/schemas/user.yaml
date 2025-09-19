@@ -1,0 +1,23 @@
+type: object
+properties:
+  id:
+    type: integer
+    example: 1
+  username:
+    type: string
+    example: johndoe
+  email:
+    type: string
+    format: email
+    example: johndoe@example.com
+  is_active:
+    type: boolean
+    example: true
+  created_at:
+    type: string
+    format: date-time
+    example: '2024-01-01T12:00:00Z'
+  updated_at:
+    type: string
+    format: date-time
+    example: '2024-01-02T12:00:00Z'
